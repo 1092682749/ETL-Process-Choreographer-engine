@@ -1,0 +1,10 @@
+
+build/*.js
+
+src/assets
+
+public
+
+*.js
+
+*.vue

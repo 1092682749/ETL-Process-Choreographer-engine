@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+
+    <title>任务可视化</title>
+    <link rel="stylesheet" href="../static/etl_resource/iview/styles/iview.css">
+    <link rel="stylesheet" href="../static/etl_resource/codemirror.css">
+
+    <script src="../static/etl_resource/vue.js"></script>
+
+    <script src="../static/etl_resource/iview/iview.js"></script>
+
+
+    <script src="../static/etl_resource/codemirror.js"></script>
+    <script src="../static/etl_resource/codemirror-5.65.0/mode/sql/sql.js"></script>
+    <script src="../static/etl_resource/axios/axios.js"></script>
+    <script type="module" src="../static/etl_resource/diagram.js"></script>
+
+
+</head>
+<style>
+    * {
+        margin: 0;
+    }
+    #app-box {
+        position: relative;
+    }
+    /** 给svg添加格子背景 */
+    #svgContent {
+        background-size: 50px 50px;
+        background-image: linear-gradient(
+                0deg,
+                transparent 24%,
+                rgba(255, 255, 255, 0.05) 25%,
+                rgba(255, 255, 255, 0.05) 26%,
+                transparent 27%,
+                transparent 74%,
+                rgba(255, 255, 255, 0.05) 75%,
+                rgba(255, 255, 255, 0.05) 76%,
+                transparent 77%,
+                transparent
+        ),
+        linear-gradient(
+                90deg,
+                transparent 24%,
+                rgba(255, 255, 255, 0.05) 25%,
+                rgba(255, 255, 255, 0.05) 26%,
+                transparent 27%,
+                transparent 74%,
+                rgba(255, 255, 255, 0.05) 75%,
+                rgba(255, 255, 255, 0.05) 76%,
+                transparent 77%,
+                transparent
+        );
+        background-color: rgb(60, 60, 60) !important;
+        /*margin-left: 200px;*/
+        /*margin-top: 40px;*/
+        /*margin-right: 200px;*/
+    }
+
+    #tools-bar {
+        width: 100px;
+        height: 100vh;
+        z-index: 1000;
+        background: #f1efef;
+        position: fixed;
+        top: 0;
+        /*left: 0;*/
+        /*bottom: 0;*/
+    }
+
+    .node-box {
+        width: 150px;
+        min-height: 90px;
+        border: solid 5px #dfe6e8;
+        border-radius: 6px;
+        background: #f4f5ef;
+    }
+
+    .node-bar {
+        display: inline-block;
+        width: 100%;
+        height: 50px;
+        line-height: 50px;
+        /*text-align: left;*/
+        background: #fafcfd;
+        margin: -1px;
+        padding: 1px;
+        text-align: center;
+    }
+
+    .node-border-start {
+        /*border-color: #39ef39;*/
+        box-shadow: 0 4px 8px 0 rgba(255, 0, 0, 0.5), 0 6px 20px 0 rgba(255, 0, 0, 0.3);
+    }
+
+    .node-btn {
+
+    }
+
+    .connector {
+        stroke: #00c0ff;
+        stroke-width: 2px;
+        /* fill: none; */
+        fill: transparent;
+        cursor: pointer;
+        stroke-dasharray: 100%;
+        animation: line_success 0.5s;
+    }
+
+    @keyframes line_success {
+        0% {
+            stroke-dashoffset: 100%;
+        }
+        100% {
+            stroke-dashoffset: 0%;
+        }
+    }
+
+    .defaultArrow {
+        stroke: #00c0ff;
+        stroke-width: 2px;
+        /* fill: none; */
+        fill: transparent;
+        cursor: pointer;
+        stroke-dasharray: 5px;
+        stroke-dashoffset: 1000px;
+        animation: grown 40s infinite linear;
+    }
+
+    @keyframes grown {
+        to {
+            stroke-dashoffset: 0px;
+        }
+    }
+
+    .CodeMirror {
+
+        font-size: 16px;
+    }
+
+    .node-view-window {
+        height: 100%;
+        width: 100%;
+        overflow: hidden;
+    }
+</style>
+<body>
+<div id="app"
+     v-on:mousemove="dragMove"
+     v-on:mouseup="dragEnd">
+
+    <svg
+            id="svgContent"
+            xmlns="http://www.w3.org/2000/svg"
+            xmlns:xlink="http://www.w3.org/1999/xlink"
+            version="1.1"
+            :width="`${svgW}px`"
+            :height="`${svgH}px`"
+
+            @mousewheel="onMouseWheelSvg"
+    >
+        <g
+                v-for="(item, i) in nodes"
+                :key="'_' + i"
+                class="svgEach"
+                :transform="`translate(${item.x}, ${item.y}) scale(${svgScale})`"
+                @mousedown="dragNodeStart($event, i, item)"
+        >
+            <foreignObject style="width: 221px;height: 160px">
+                <div :class=" `node-box ${i==startNode? 'node-border-start' : ''}`" @click="clickNode($event, i, item)">
+                    <span class="node-bar">
+                              <i-button type="default" @click="editNodeInfo(i)" title="编辑">📖</i-button>
+                                <i-button type="default" title="运行" @click="runNodeCode(i)">🚀</i-button>
+
+                        </span>
+                    <div class="node-view-window">{{item.code == undefined ? '' : item.code}}</div>
+                </div>
+            </foreignObject>
+        </g>
+        <g v-for="(edge, n) in edges">
+            <path :class="'connector'"
+                  v-on:contextmenu="clickEdge($event, n)"
+                  :d="`M${edge.startNode.x+(nodeW/2)} ${edge.startNode.y+nodeH}
+                  Q ${edge.startNode.x+(nodeW/2)} ${(edge.startNode.y+nodeW)} ${(edge.startNode.x+nodeW+edge.endNode.x)/2} ${(edge.startNode.y+nodeH+edge.endNode.y)/2}
+                  T ${edge.endNode.x+(nodeW/2)} ${edge.endNode.y}`"
+                  fill="red" stroke-width="2"/>
+            <path
+                    :d="`M${edge.endNode.x+(nodeW/2)-5} ${edge.endNode.y} h 10 l -5 5 z`" stroke="black"
+            ></path>
+
+        </g>
+    </svg>
+
+    <div id="tools-bar" ref="bar">
+        <div class="node-box" style="width: 100%" v-on:mousedown="dragStart">
+            任务框
+        </div>
+        <div class="node-box" style="width: 100%" v-on:click="startLink">
+            <span v-if="!startLinkFlag">开始连线</span>
+            <span v-if="startLinkFlag">结束连线</span>
+        </div>
+        <div class="node-box" style="width: 100%" v-on:click="saveDiagram">
+            保存流程图
+        </div>
+        <div class="node-box" style="width: 100%" v-on:click="coverDiagram">
+            读取流程图
+        </div>
+        <div class="node-box" style="width: 100%" v-on:click="runTask">
+            执行
+        </div>
+        <div class="node-box" style="width: 100%" v-on:click="extendSvg">
+            扩展画布
+        </div>
+    </div>
+
+    <div class="node-box" v-show="showDragNode" ref="mockDragNode" style="z-index: 1000; position: absolute;" id="mock"
+         :style="{left: moveX + 'px', top: moveY + 'px' }">
+            <span class="node-bar">
+                     <i-button type="default">📖</i-button>
+                                <i-button type="default">🚀</i-button>
+                </span>
+    </div>
+
+    <div v-show="showEdgeMenu" class="node-box" ref="edgeMenu" style="position: absolute">
+        <i-button v-on:click="deleteEdge">删除连接线</i-button>
+        <i-button v-on:click="hideEdgeMenu">什么也不做</i-button>
+    </div>
+
+    <Modal
+            v-model="editorModal"
+            title="编辑任务"
+            :styles="{top: editorModalTop}"
+            :width="defaultEditorWidth">
+
+        <i-Input v-model="editingNodeName">
+            <span slot="prepend">任务名</span>
+        </i-Input>
+
+        <i-Select v-model="editingNodeType" style="width:200px">
+            <i-Option value="start" key="start">开始节点</i-Option>
+            <i-Option value="gr" key="gr">普通节点</i-Option>
+            <i-Option value="end" key="end">结束节点</i-Option>
+        </i-Select>
+
+        <textarea id="code" name="code" ref="codeEditor">
+            </textarea>
+        <div slot="footer">
+            <i-Button @click="fullScanner" v-if="!bigWindowModel">大窗编辑模式</i-Button>
+            <i-Button @click="fullScanner" v-if="bigWindowModel">小窗编辑模式</i-Button>
+            <i-Button @click="saveNodeInfo" type="primary">保存</i-Button>
+        </div>
+    </Modal>
+
+</div>
+</body>
+</html>
+<script>
+</script>

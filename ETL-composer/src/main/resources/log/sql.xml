@@ -1,0 +1,213 @@
+<?xml version="1.0" encoding="GB2312"?>
+<ReportRef>
+  <Report>GRID
+    <ReportIndex ReportType="GRID" ReportCaption="OE Cost Review by Stage Move Report">0
+      <GridFontSize>8</GridFontSize>
+      <FixedCol>0</FixedCol>
+      <FixedRow>1</FixedRow>
+      <GridDecimal>1</GridDecimal>
+      <SQL>
+        create table SOLVE_CENTER_CASE_ACTION
+        (
+        ACTION_TYPE VARCHAR(16),
+        EMPLID      VARCHAR(16),
+        EMPL_NAME   VARCHAR(16),
+        CASE_ID     INT,
+        ACTION_TIME DATE
+        )
+
+
+        create table SOLVE_CENTER_ROLE_PERMISSION
+        (
+
+        R_ID        VARCHAR(32),
+        P_ID        VARCHAR(32),
+        CREATE_TIME DATE,
+        UPDATE_TIME DATE,
+        UPDAE_NT    VARCHAR(16),
+        IS_DELETE   VARCHAR(2) default 'N',
+        R_NAME      VARCHAR(32)
+        )
+
+
+        create table SOLVE_CENTER_TBL_ALLOW_IP
+        (
+        IP        VARCHAR(255),
+        IS_ACCESS VARCHAR(255)
+        )
+
+
+        create table SOLVE_CENTER_TBL_CASE_FORM
+        (
+        CASE_ID       INT,
+        TITLE         VARCHAR(255),
+        BRIEF         VARCHAR(255),
+        CATEGORY_ID   VARCHAR(255),
+        AUTHOR        VARCHAR(255),
+        CREATE_DATE   DATE,
+        STATUS        VARCHAR(255),
+        TAGS          VARCHAR(255),
+        CONTENT       BLOB,
+        CREATE_EMPLID VARCHAR(16),
+        CREATE_EMPL   VARCHAR(16),
+        MODULE_NAME   VARCHAR(255),
+        IS_DELETE     VARCHAR(16) default 'N',
+        ADMIN_RATE    INT default 0
+        )
+
+
+        create table SOLVE_CENTER_TBL_COLLECT
+        (
+        CASE_ID      INT,
+        EMPNO        VARCHAR(255),
+        COLLECT_TIME DATE,
+        COLLECT_ID   VARCHAR(255)
+        )
+
+
+
+
+        -- Create table
+        create table SOLVE_CENTER_TBL_COMMENT
+        (
+        COMMENT_ID      INT,
+        CASE_ID         VARCHAR(255),
+        COMMENT_TIME    DATE,
+        COMMENT_EMPNO   VARCHAR(255),
+        COMMENT_LEVEL   VARCHAR(255),
+        PARENT_ID       VARCHAR(255),
+        TO_EMPNO        VARCHAR(255),
+        IS_DELETE       VARCHAR(255),
+        ACCEPT          VARCHAR(255) default 'N',
+        ADMIN_RATE      INT default 0,
+        TO_EMPNAME      VARCHAR(255),
+        COMMENT_EMPNAME VARCHAR(255),
+        CONTENT         BLOB
+        )
+
+
+        -- Create table
+        create table SOLVE_CENTER_TBL_FILE
+        (
+        FORM_NO       VARCHAR(64),
+        FORM_TYPE     VARCHAR(64),
+        FILE_FID      VARCHAR(255),
+        FILE_CLASSIFY VARCHAR(64),
+        FILE_NAME     VARCHAR(64),
+        FILE_PATH     VARCHAR(255),
+        DELETED       VARCHAR(10),
+        DESCRIPTION   VARCHAR(255)
+        )
+
+
+
+        -- Create table
+        create table SOLVE_CENTER_TBL_LIKE
+        (
+        CASE_ID      INT,
+        ACTION       VARCHAR(255),
+        ACTION_EMPNO VARCHAR(255),
+        ACTION_TIME  DATE,
+        ACTION_ID    VARCHAR(255),
+        TARGET_TYPE  VARCHAR(255),
+        COMMENT_ID   INT(255)
+        )
+
+
+
+        create table SOLVE_CENTER_TBL_PERMISSION
+        (
+        ID          VARCHAR(8),
+        P_NAME      VARCHAR(32),
+        P_DESC      VARCHAR(256),
+        CREATE_TIME DATE,
+        UPDATE_TIME DATE,
+        UPDAE_NT    VARCHAR(16),
+        IS_DELETE   VARCHAR(2) default 'N'
+        )
+
+
+        create table SOLVE_CENTER_TBL_ROLE
+        (
+        ID          VARCHAR(8),
+        R_NAME      VARCHAR(32),
+        R_DESC      VARCHAR(256),
+        CREATE_TIME DATE,
+        UPDATE_TIME DATE,
+        UPDAE_NT    VARCHAR(16),
+        IS_DELETE   VARCHAR(2) default 'N'
+        )
+
+
+
+        create table SOLVE_CENTER_TBL_TAG
+        (
+        TAG_NAME     VARCHAR(255),
+        CREATE_EMPNO VARCHAR(255),
+        CREATE_TIME  DATE,
+        T_ID         VARCHAR(255),
+        IS_DELETE    VARCHAR(2) default 'N',
+        ROLE_NAME    VARCHAR(255)
+        )
+
+
+        create table SOLVE_CENTER_TBL_UNREAD
+        (
+        COMMENT_ID INT(255),
+        UNREAD_ID  VARCHAR(255),
+        TO_EMPNO   VARCHAR(255),
+        CASE_TITLE VARCHAR(255),
+        FROM_NAME  VARCHAR(255),
+        CASE_ID    INT(180)
+        )
+
+        create table SOLVE_CENTER_USER_ROLE
+        (
+        ID          VARCHAR(8),
+        U_ID        VARCHAR(32),
+        R_ID        VARCHAR(256),
+        U_TYPE      VARCHAR(8) default 'user',
+        CREATE_TIME DATE,
+        UPDATE_TIME DATE,
+        UPDAE_NT    VARCHAR(16),
+        IS_DELETE   VARCHAR(2) default 'N'
+        )
+
+
+
+        -- Create table
+        create table CHR_T_EMP
+        (
+        EMP_NO       VARCHAR(99) not null,
+        E_NAME       VARCHAR(450),
+        CNAME_SH     VARCHAR(4000),
+        MAIL_NAME    VARCHAR(90)
+        )
+      </SQL>
+      <BandLen>5
+        <BandColor>-2147483624</BandColor>
+      </BandLen>
+      <InputCond>START_TIME
+        <CondOrder>1</CondOrder>
+        <CondType>P</CondType>
+        <CondDesc>yyyy-mm-dd hh:mm</CondDesc>
+        <CondSQL></CondSQL>
+      </InputCond>
+      <InputCond>END_TIME
+        <CondOrder>2</CondOrder>
+        <CondType>P</CondType>
+        <CondDesc>yyyy-mm-dd hh:mm</CondDesc>
+        <CondSQL></CondSQL>
+      </InputCond>
+      <ChartType>LINE
+        <ChartTitle></ChartTitle>
+        <ThreeDView>N</ThreeDView>
+        <Legend>Y</Legend>
+        <ChartBackColor>16777215</ChartBackColor>
+        <AxisPos>LEFT</AxisPos>
+      </ChartType>
+    </ReportIndex>
+  </Report>
+  <Width></Width>
+  <Height></Height>
+</ReportRef>
