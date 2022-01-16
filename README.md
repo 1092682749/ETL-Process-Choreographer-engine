@@ -10,9 +10,11 @@ ETL 任务处理中，我们需要执行很多sql文件，这些sql文件往往�
 ### ETL-PCE提供了什么功能？
 - 可视化编排任务（如下图）
  1.1 接近原生IDE的SQL编辑
+  <br>
  1.2 清晰的数据流向图
+  <br>
  1.3 拖拽式流程编辑
- 
+  <br>
  ![image](https://user-images.githubusercontent.com/36019799/149656542-11584f01-5dd2-4642-be75-6b353c2fc71c.png)
  
 - 调度任务
