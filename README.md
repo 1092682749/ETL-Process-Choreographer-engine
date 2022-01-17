@@ -30,9 +30,21 @@ ETL 任务处理中，我们需要执行很多sql文件，这些sql文件往往�
 2)执行原理 类似图的广度遍历，配合redis锁，实现任务调度管理
 
 ### TODO List
-优化界面操作
-优化线程调度
+前端
+- 拖拽适配
+- 执行状态展示
+- 导航优化
+- 视图编辑功能区优化
+- 保存可执行
+
+后端
+- 优化线程调度
+- 前置节点检查优化
+- 代码结构优化
+- 存储方式优化和存储接口封装
+- 任务死锁检查
 
 ### 技术参考
 See [redis 官方文档](https://redis.io/documentation).
+<br>
 See [SVG MDN文档](https://developer.mozilla.org/zh-CN/docs/Web/SVG/Element/svg).
