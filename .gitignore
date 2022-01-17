@@ -3,3 +3,5 @@
 /diagram/node_modules/
 /ETL-composer/.idea/
 /ETL-composer/target/
+/.idea/
+/ETL-composer/ETL-composer.iml
