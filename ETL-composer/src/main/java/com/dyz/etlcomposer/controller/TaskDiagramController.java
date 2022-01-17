@@ -2,88 +2,27 @@ package com.dyz.etlcomposer.controller;
 
 
 import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.annotation.JSONField;
+import com.dyz.etlcomposer.diagram.context.TaskContext;
+import com.dyz.etlcomposer.model.*;
 import com.dyz.etlcomposer.utils.Result;
 import com.dyz.etlcomposer.utils.ResultGenerator;
 
 //import io.swagger.annotations.Api;
 import com.dyz.etlcomposer.utils.redis.RedisLock;
-import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.data.redis.RedisProperties;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import redis.clients.jedis.Jedis;
 
 
 import javax.annotation.Resource;
-import javax.xml.soap.Node;
+//import javax.xml.soap.Node;
 import java.util.*;
 import java.util.stream.Collectors;
 
-@Data
-class Diagram {
-    Long id;
-    String name;
-    //    @JSONField(serialize = false)
-    List<DiagramNode> nodes;
-    //    @JSONField(serialize = false)
-    List<DiagramEdge> edges;
+import static com.dyz.etlcomposer.model.RunTreeNode.constructRunTree;
 
-}
-
-@Data
-class DiagramNode {
-    String nodeId;
-    String code;
-    Double x;
-    Double y;
-    String name;
-    String nodeType;
-}
-
-@Data
-class DiagramEdge {
-    String startNodeId;
-    String endNodeId;
-
-
-    DiagramNode startNode;
-
-    DiagramNode endNode;
-}
-
-@Data
-class RunTreeNode {
-    List<RunTreeNode> preNodes = new LinkedList<>();
-    List<RunTreeNode> nextNodes = new LinkedList<>();
-    DiagramNode node;
-}
-
-class NodeType {
-    public static String NODE_START = "start";
-    public static String NODE_GR = "gr";
-    public static String NODE_END = "end";
-}
-
-class TaskContext {
-    public static ThreadLocal<String> executeID = new ThreadLocal<>();
-
-    public static String getExecuteID() {
-        return executeID.get();
-    }
-
-    public static void setExecuteID(String executeID) {
-        TaskContext.executeID.set(executeID);
-    }
-
-    public static void destroyContext() {
-        executeID.remove();
-    }
-}
 
 /**
  * @author dingyinzhao
@@ -156,8 +95,8 @@ public class TaskDiagramController {
 
     public Result readDiagram(@RequestBody Diagram diagram) {
 
-        String s = (String) redisTemplate.opsForValue().get(String.format(nodesFormat, diagram.getId(), diagram.name));
-        String s1 = (String) redisTemplate.opsForValue().get(String.format(edgesFormat, diagram.getId(), diagram.name));
+        String s = (String) redisTemplate.opsForValue().get(String.format(nodesFormat, diagram.getId(), diagram.getName()));
+        String s1 = (String) redisTemplate.opsForValue().get(String.format(edgesFormat, diagram.getId(), diagram.getName()));
         diagram.nodes = JSON.parseArray(s, DiagramNode.class);
         diagram.edges = JSON.parseArray(s1, DiagramEdge.class);
         return ResultGenerator.successResult(diagram);
@@ -167,8 +106,8 @@ public class TaskDiagramController {
     @RequestMapping("/runTask")
     public Result runTask(@RequestBody Diagram diagram) {
 
-        String s = (String) redisTemplate.opsForValue().get(String.format(nodesFormat, diagram.getId(), diagram.name));
-        String s1 = (String) redisTemplate.opsForValue().get(String.format(edgesFormat, diagram.getId(), diagram.name));
+        String s = (String) redisTemplate.opsForValue().get(String.format(nodesFormat, diagram.getId(), diagram.getName()));
+        String s1 = (String) redisTemplate.opsForValue().get(String.format(edgesFormat, diagram.getId(), diagram.getName()));
         diagram.nodes = JSON.parseArray(s, DiagramNode.class);
         diagram.edges = JSON.parseArray(s1, DiagramEdge.class);
 
@@ -176,11 +115,12 @@ public class TaskDiagramController {
         RunTreeNode runTreeNode = constructRunTree(diagram);
         // 为本次执行生成一个id
         String executeId = String.format(executeIdFormat, diagram.getName(), new Date().getTime());
+        Executor executor = new Executor(redisTemplate);
 
         TaskContext.setExecuteID(executeId);
 
 
-        run(runTreeNode, executeId);
+        executor.run(runTreeNode, executeId);
 
         TaskContext.destroyContext();
         return ResultGenerator.successResult(executeId.toString());
@@ -191,105 +131,16 @@ public class TaskDiagramController {
         return ResultGenerator.successResult(redisTemplate.opsForList().range(executeID, 0, -1));
     }
 
-    public void run(RunTreeNode node, String executeId) {
-        // 广度遍历队列
-        Queue<RunTreeNode> executeQueue = new LinkedList<>();
 
 
-        // 根节点入队
-        if (node != null) {
-            executeQueue.offer(node);
-        }
 
-        while (executeQueue.peek() != null) {
-            RunTreeNode pollNode = executeQueue.poll();
-            // 这里交给其他线程执行 提升并行度
-            new Thread(() -> {
-                TaskContext.setExecuteID(executeId);
-                executeCode(pollNode, executeId);
-            }).start();
-
-            List<RunTreeNode> nextNodes = pollNode.getNextNodes();
-            nextNodes.forEach(executeQueue::offer);
-        }
-    }
-
-    public void executeCode(RunTreeNode node, String executeId) {
-
-        // 使用redis共享锁 锁定executeId+name
-        RedisLock redisLock = new RedisLock(redisTemplate, executeId + node.getNode().name);
-        boolean islock = redisLock.lock();
-        if (!islock) {
-            throw new RuntimeException("获取锁一小时尝试失败，请检查任务状态!");
-        }
-        try {
-            boolean completed = false;
-            // 检查前置
-            while (!completed) {
-                completed = checkPre(node, executeId);
-                try {
-                    Thread.sleep(1000);
-                } catch (InterruptedException e) {
-                    log.info("wait");
-                }
-            }
-            // 单向图 要保证没换个节点 执行一次
-            List<Object> complatedList = redisTemplate.opsForList().range(executeId, 0, -1);
-            if (!complatedList.contains(node.getNode().getName())) {
-
-                // 模拟真实任务
-                log.info(node.getNode().code);
-
-                redisTemplate.opsForList().leftPush(executeId, node.getNode().getName());
-            }
-        }finally {
-            redisLock.unlock();
-        }
-    }
-
-    public boolean checkPre(RunTreeNode node, String executeId) {
-        List<RunTreeNode> preNodes = node.getPreNodes();
-        if (preNodes.size() == 0) return true;
-        List<Object> complatedList = redisTemplate.opsForList().range(executeId, 0, -1);
-        Boolean completed = preNodes.stream().map(i -> complatedList.contains(i.getNode().getName())).reduce((p, n) -> p && n).get();
-        return completed;
-    }
-
-    public RunTreeNode constructRunTree(Diagram diagram) {
-        RunTreeNode runTreeStartNode = new RunTreeNode();
-        List<DiagramEdge> edges = diagram.edges;
-        List<DiagramNode> nodes = diagram.nodes;
-        for (DiagramNode node : nodes) {
-            if (node.getNodeType().equals(NodeType.NODE_START)) {
-                runTreeStartNode.node = node;
-                findNext(runTreeStartNode, nodes, edges);
-            }
-        }
-
-        return runTreeStartNode;
-    }
-
-    public void findNext(RunTreeNode currentNode, List<DiagramNode> nodes, List<DiagramEdge> edges) {
-        String currentNodeID = currentNode.getNode().getNodeId();
-        List<String> nextNodeIds = edges.stream().filter(edge -> edge.startNodeId.equals(currentNodeID)).map(DiagramEdge::getEndNodeId).collect(Collectors.toList());
-        if (nextNodeIds.size() == 0) {
-            return;
-        }
-        currentNode.setNextNodes(nodes.stream().filter(ni -> nextNodeIds.contains(ni.getNodeId())).map(i -> {
-            RunTreeNode treeNode = new RunTreeNode();
-            treeNode.setNode(i);
-            treeNode.getPreNodes().add(currentNode);
-            findNext(treeNode, nodes, edges);
-            return treeNode;
-        }).collect(Collectors.toList()));
-    }
 
     public void saveOrUpdate(Diagram diagram) {
         Diagram small = new Diagram();
         small.setId(diagram.getId());
         small.setName(diagram.getName());
         redisTemplate.opsForSet().add(allDiagram, JSON.toJSONString(small));
-        redisTemplate.opsForValue().set(String.format(nodesFormat, diagram.getId(), diagram.name), JSON.toJSONString(diagram.nodes));
-        redisTemplate.opsForValue().set(String.format(edgesFormat, diagram.getId(), diagram.name), JSON.toJSONString(diagram.edges));
+        redisTemplate.opsForValue().set(String.format(nodesFormat, diagram.getId(), diagram.getName()), JSON.toJSONString(diagram.nodes));
+        redisTemplate.opsForValue().set(String.format(edgesFormat, diagram.getId(), diagram.getName()), JSON.toJSONString(diagram.edges));
     }
 }
