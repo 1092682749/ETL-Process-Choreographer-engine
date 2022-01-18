@@ -1,11 +1,13 @@
 package com.dyz.etlcomposer.utils.redis;
 
+import lombok.Data;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 
 import java.util.Date;
 
+@Data
 public class RedisLock {
     @Autowired
     RedisTemplate<String, Object> redisTemplate;

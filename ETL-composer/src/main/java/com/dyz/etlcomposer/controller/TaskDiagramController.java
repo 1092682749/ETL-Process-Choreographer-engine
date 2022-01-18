@@ -3,6 +3,7 @@ package com.dyz.etlcomposer.controller;
 
 import com.alibaba.fastjson.JSON;
 import com.dyz.etlcomposer.diagram.context.TaskContext;
+import com.dyz.etlcomposer.diagram.execute.HiveExecutor;
 import com.dyz.etlcomposer.model.*;
 import com.dyz.etlcomposer.utils.Result;
 import com.dyz.etlcomposer.utils.ResultGenerator;
@@ -22,6 +23,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import static com.dyz.etlcomposer.model.RunTreeNode.constructRunTree;
+import static com.dyz.etlcomposer.utils.Constants.*;
 
 
 /**
@@ -38,12 +40,6 @@ public class TaskDiagramController {
     @Resource
     RedisTemplate<String, Object> redisTemplate;
 
-
-    String nodesFormat = "%d_%s_nodes";
-    String edgesFormat = "%d_%s_edges";
-    String executeIdFormat = "%s_%s";
-    String allDiagram = "diagram_set";
-    String idSeq = "diagram_id";
 
     @RequestMapping("/saveDiagram")
     public Result saveDiagram(@RequestBody Diagram diagram) {
@@ -111,19 +107,11 @@ public class TaskDiagramController {
         diagram.nodes = JSON.parseArray(s, DiagramNode.class);
         diagram.edges = JSON.parseArray(s1, DiagramEdge.class);
 
-        // 生成执行树
-        RunTreeNode runTreeNode = constructRunTree(diagram);
-        // 为本次执行生成一个id
-        String executeId = String.format(executeIdFormat, diagram.getName(), new Date().getTime());
-        Executor executor = new Executor(redisTemplate);
-
-        TaskContext.setExecuteID(executeId);
+        Executor executor = new HiveExecutor(redisTemplate, diagram);
+        executor.run();
 
 
-        executor.run(runTreeNode, executeId);
-
-        TaskContext.destroyContext();
-        return ResultGenerator.successResult(executeId.toString());
+        return ResultGenerator.successResult(TaskContext.getExecuteID().toString());
     }
 
     @RequestMapping("/getStatus")

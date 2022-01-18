@@ -17,6 +17,13 @@ public final class Constants {
   public static final String SERVICE_IMPL_PACKAGE = SERVICE_PACKAGE + ".impl";//ServiceImpl所在包
   public static final String CONTROLLER_PACKAGE = BASE_PACKAGE + ".controller";//Controller所在包
 
+
+  public static final String nodesFormat = "%d_%s_nodes";
+  public static final String edgesFormat = "%d_%s_edges";
+  public static final String  executeIdFormat = "%s_%s";
+  public static final String allDiagram = "diagram_set";
+  public static final String idSeq = "diagram_id";
+
   public static final String MAPPER_INTERFACE_REFERENCE = BASE_PACKAGE + ".utils.Mapper";//Mapper插件基础接口的完全限定名
   public static final String MODULE_NAME = "moduleName";
   public static final String MODULE_FLAG = "SOLVE_CENTER_MODULE";
